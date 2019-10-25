@@ -2,6 +2,7 @@
 #define CPUCYCLES_H
 
 #include "../config.h"
+#include <emscripten/emscripten.h>
 
 #ifdef DBENCH
 #define DBENCH_START() unsigned long long time = cpucycles_start()
@@ -81,21 +82,11 @@ static inline unsigned long long cpucycles_stop(void) {
 #else
 
 static inline unsigned long long cpucycles_start(void) {
-  unsigned long long result;
-
-  asm volatile("rdtsc; shlq $32,%%rdx; orq %%rdx,%%rax"
-    : "=a" (result) : : "%rdx");
-
-  return result;
+  return emscripten_get_now();
 }
 
 static inline unsigned long long cpucycles_stop(void) {
-  unsigned long long result;
-
-  asm volatile("rdtsc; shlq $32,%%rdx; orq %%rdx,%%rax"
-    : "=a" (result) : : "%rdx");
-
-  return result;
+  return emscripten_get_now();
 }
 
 #endif
