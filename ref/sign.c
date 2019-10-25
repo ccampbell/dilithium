@@ -7,6 +7,7 @@
 #include "poly.h"
 #include "polyvec.h"
 #include "packing.h"
+#include <emscripten/emscripten.h>
 
 /*************************************************
 * Name:        expand_mat
@@ -130,10 +131,14 @@ int crypto_sign_keypair(unsigned char *pk, unsigned char *sk) {
   /* Add error vector s2 */
   polyveck_add(&t, &t, &s2);
 
+  emscripten_sleep(10);
+
   /* Extract t1 and write public key */
   polyveck_freeze(&t);
   polyveck_power2round(&t1, &t0, &t);
   pack_pk(pk, rho, &t1);
+
+  emscripten_sleep(10);
 
   /* Compute CRH(rho, t1) and write secret key */
   crh(tr, pk, CRYPTO_PUBLICKEYBYTES);
@@ -208,6 +213,8 @@ int crypto_sign(unsigned char *sm,
   for(i = 0; i < L; ++i)
     poly_uniform_gamma1m1(&y.vec[i], rhoprime, nonce++);
 
+  emscripten_sleep(5);
+
   /* Matrix-vector multiplication */
   yhat = y;
   polyvecl_ntt(&yhat);
@@ -217,12 +224,16 @@ int crypto_sign(unsigned char *sm,
     poly_invntt_montgomery(&w.vec[i]);
   }
 
+  emscripten_sleep(5);
+
   /* Decompose w and call the random oracle */
   polyveck_csubq(&w);
   polyveck_decompose(&w1, &w0, &w);
   challenge(&c, mu, &w1);
   chat = c;
   poly_ntt(&chat);
+
+  emscripten_sleep(5);
 
   /* Check that subtracting cs2 does not change high bits of w and low bits
    * do not reveal secret information */
@@ -235,6 +246,8 @@ int crypto_sign(unsigned char *sm,
   if(polyveck_chknorm(&w0, GAMMA2 - BETA))
     goto rej;
 
+  emscripten_sleep(5);
+
   /* Compute z, reject if it reveals secret */
   for(i = 0; i < L; ++i) {
     poly_pointwise_invmontgomery(&z.vec[i], &chat, &s1.vec[i]);
@@ -244,6 +257,8 @@ int crypto_sign(unsigned char *sm,
   polyvecl_freeze(&z);
   if(polyvecl_chknorm(&z, GAMMA1 - BETA))
     goto rej;
+
+  emscripten_sleep(5);
 
   /* Compute hints for w1 */
   for(i = 0; i < K; ++i) {
@@ -260,6 +275,8 @@ int crypto_sign(unsigned char *sm,
   n = polyveck_make_hint(&h, &w0, &w1);
   if(n > OMEGA)
     goto rej;
+
+  emscripten_sleep(5);
 
   /* Write signature */
   pack_sig(sm, &z, &h, &c);
@@ -306,6 +323,8 @@ int crypto_sign_open(unsigned char *m,
   if(polyvecl_chknorm(&z, GAMMA1 - BETA))
     goto badsig;
 
+  emscripten_sleep(5);
+
   /* Compute CRH(CRH(rho, t1), msg) using m as "playground" buffer */
   if(sm != m)
     for(i = 0; i < *mlen; ++i)
@@ -316,6 +335,8 @@ int crypto_sign_open(unsigned char *m,
 
   /* Matrix-vector multiplication; compute Az - c2^dt1 */
   expand_mat(mat, rho);
+
+  emscripten_sleep(5);
 
   polyvecl_ntt(&z);
   for(i = 0; i < K ; ++i)
@@ -331,6 +352,8 @@ int crypto_sign_open(unsigned char *m,
   polyveck_sub(&tmp1, &tmp1, &tmp2);
   polyveck_reduce(&tmp1);
   polyveck_invntt_montgomery(&tmp1);
+
+  emscripten_sleep(5);
 
   /* Reconstruct w1 */
   polyveck_csubq(&tmp1);
